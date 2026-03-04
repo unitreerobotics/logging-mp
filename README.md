@@ -1,18 +1,16 @@
 <div align="center">
-  <div align="center">
-    <img src="./logging_mp.png" width="45%" style="vertical-align: middle;">
-    <span style="color: #ddd; margin: 0 20px; font-size: 30px; vertical-align: middle;">|</span>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://www.unitree.com/" target="_blank" style="vertical-align: middle; margin-left: 30px;">
-      <img src="https://www.unitree.com/images/0079f8938336436e955ea3a98c4e1e59.svg" width="45%">
-    </a>
-  </div>
-  <br>
-  <p align="center">
-    <a>English</a> | <a href="README_zh-CN.md">中文</a>
-  </p>
+  
+<div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20px;">
+  <img src="./logging_mp.png" style="width: 45%; min-width: 250px; max-width: 300px;">
+  <span style="color: #ddd; font-size: 30px;">        </span>
+  <a href="https://www.unitree.com/">
+    <img src="https://www.unitree.com/images/0079f8938336436e955ea3a98c4e1e59.svg" style="width: 45%; min-width: 250px; max-width: 300px;">
+  </a>
 </div>
 
+<br>
+<a>English</a> | <a href="README_zh-CN.md">中文</a>
+</div>
 
 **logging_mp** is a Python library specifically designed for **multiprocessing support** in logging. 
 
@@ -20,11 +18,10 @@ It solves the issues of log disorder, loss, or deadlock that arise with the stan
 
 ## 1. ✨ Features
 
-* ⚡ **Zero-Config Multiprocessing:** Child processes automatically send logs to the main process. No need to pass `Queue` objects manually.
+* ⚡ **Support Multi-Processing & Thread:** Fully compatible with `threading` modules. Child processes automatically send logs to the main process.
 * 💻 **Cross-Platform Support:** Works seamlessly with both `fork` (Linux) and `spawn` (Windows/macOS) start methods.
 * 🎨 **Rich Integration:** Beautiful, colorized console output powered by [Rich](https://github.com/Textualize/rich).
 * 📂 **File Logging:** Aggregates logs from all processes and threads into a single, rotated log file.
-* 🔒**Thread Safe:** Fully compatible with `threading` modules.
 
 ## 2. 🛠️ Installation
 
