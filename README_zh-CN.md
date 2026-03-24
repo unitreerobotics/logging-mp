@@ -1,16 +1,15 @@
 <div align="center">
-  <div align="center">
-    <img src="./logging_mp.png" width="45%" style="vertical-align: middle;">
-    <span style="color: #ddd; margin: 0 20px; font-size: 30px; vertical-align: middle;">|</span>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <a href="https://www.unitree.com/" target="_blank" style="vertical-align: middle; margin-left: 30px;">
-      <img src="https://www.unitree.com/images/0079f8938336436e955ea3a98c4e1e59.svg" width="45%">
-    </a>
-  </div>
-  <br>
-  <p align="center">
-    <a href="README.md"> English </a> | <a>中文</a> </a>
-  </p>
+  
+<div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20px;">
+  <img src="./logging_mp.png" style="width: 45%; min-width: 250px; max-width: 300px;">
+  <span style="color: #ddd; font-size: 30px;">        </span>
+  <a href="https://www.unitree.com/">
+    <img src="https://www.unitree.com/images/0079f8938336436e955ea3a98c4e1e59.svg" style="width: 45%; min-width: 250px; max-width: 300px;">
+  </a>
+</div>
+
+<br>
+<a>English</a> | <a href="README_zh-CN.md">中文</a>
 </div>
 
 
@@ -20,7 +19,7 @@
 
 ## 1. ✨ 核心特性
 
-* **⚡ 零配置多进程支持**：无需手动传递 Queue，无需修改 Worker 函数签名，子进程自动继承日志能力。
+* **⚡ 支持多进程 & 多线程**：完全兼容 Python 的 `threading` 模块。无需复杂配置，子进程自动继承日志能力。
 * **💻 跨平台兼容**：支持 Linux ( `fork` ) 以及 Windows/macOS ( `spawn` ) 的启动方式。
 * **🎨 Rich 终端美化**：集成 [Rich](https://github.com/Textualize/rich) 库，提供高亮、清晰的控制台日志输出。
 * **📂 文件管理**：自动启动后台监听进程，将所有子进程和线程的日志汇聚到带时间戳的日志文件中，并支持按大小轮转、按数量清理。
