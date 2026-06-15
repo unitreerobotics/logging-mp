@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import platform
 import queue as queue_module
+import re
 import signal
 import sys
 import threading
@@ -67,9 +68,12 @@ def _logging_mp_get_prog_name():
         return "app"
 
 class TimestampedRotatingFileHandler(RotatingFileHandler):
-    def __init__(self, log_dir, prog_name, maxBytes, backupCount, encoding=None):
+    def __init__(self, log_dir, prog_name, maxBytes, backupCount, encoding=None, file_name_format=None):
         self._log_dir = log_dir
         self._prog_name = prog_name
+        self._file_name_format = file_name_format
+        self._current_file_name = None
+        self._file_index = -1
         super().__init__(
             self._build_log_path(),
             maxBytes=maxBytes,
@@ -79,22 +83,62 @@ class TimestampedRotatingFileHandler(RotatingFileHandler):
         self._cleanup_old_logs()
 
     def _build_log_path(self):
+        if self._file_name_format:
+            file_name = self._format_file_name()
+            if file_name != self._current_file_name:
+                self._current_file_name = file_name
+                self._file_index = self._latest_file_index(file_name)
+            else:
+                self._file_index += 1
+            stem, ext = os.path.splitext(file_name)
+            return os.path.join(self._log_dir, f"{stem}_{self._file_index}{ext}")
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         return os.path.join(self._log_dir, f"{self._prog_name}_{timestamp}.log")
 
+    def _format_file_name(self):
+        file_name = datetime.datetime.now().strftime(self._file_name_format).format(prog_name=self._prog_name)
+        if "{prog_name}" not in self._file_name_format:
+            file_name = f"{self._prog_name}_{file_name}"
+        return file_name
+
+    def _latest_file_index(self, file_name):
+        stem, ext = os.path.splitext(file_name)
+        pattern = os.path.join(self._log_dir, f"{glob.escape(stem)}_*{glob.escape(ext)}")
+        existing = glob.glob(pattern)
+        indexes = []
+        for path in existing:
+            index = os.path.splitext(path)[0].rsplit("_", 1)[-1]
+            if index.isdigit():
+                indexes.append(int(index))
+        return max(indexes, default=0)
+
     def _log_pattern(self):
-        return os.path.join(self._log_dir, f"{self._prog_name}_*.log")
+        return os.path.join(self._log_dir, f"{glob.escape(self._prog_name)}_*.log")
 
     def _cleanup_old_logs(self):
         if self.backupCount <= 0:
             return
-        log_files = sorted(glob.glob(self._log_pattern()))
-        while len(log_files) > self.backupCount:
+        current_file = os.path.abspath(self.baseFilename)
+        log_files = [
+            path for path in glob.glob(self._log_pattern())
+            if os.path.abspath(path) != current_file
+        ]
+        log_files.sort(key=self._log_sort_key)
+        # The active file also counts toward backupCount and must never be deleted.
+        while len(log_files) >= self.backupCount:
             oldest = log_files.pop(0)
             try:
                 os.remove(oldest)
             except Exception:
                 pass
+
+    @staticmethod
+    def _log_sort_key(path):
+        natural_name = tuple(
+            (1, int(part)) if part.isdigit() else (0, part)
+            for part in re.split(r"(\d+)", os.path.basename(path))
+        )
+        return os.stat(path).st_mtime_ns, natural_name
 
     def doRollover(self):
         if self.stream:
@@ -104,6 +148,11 @@ class TimestampedRotatingFileHandler(RotatingFileHandler):
         if not self.delay:
             self.stream = self._open()
         self._cleanup_old_logs()
+
+    def emit(self, record):
+        if self._file_name_format and self._format_file_name() != self._current_file_name:
+            self.doRollover()
+        super().emit(record)
 
 # ----------------------------------------------------------------------
 # Listener and Wrapper Functions
@@ -134,13 +183,15 @@ def _logging_mp_queue_listener(queue_proxy, config, prog_name):
         file_path = config.get("file_path", "logs")
         backup_count = config.get("backup_count", 10)
         max_file_size = config.get("max_file_size", 100 * 1024 * 1024)
+        file_name_format = config.get("file_name_format")
         os.makedirs(file_path, exist_ok=True)
         file_handler = TimestampedRotatingFileHandler(
             log_dir=file_path,
             prog_name=prog_name,
             maxBytes=max_file_size,
             backupCount=backup_count,
-            encoding='utf-8'
+            encoding='utf-8',
+            file_name_format=file_name_format
         )
         file_handler.setFormatter(logging.Formatter(
             fmt='%(asctime)s.%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(processName)s-%(threadName)s: %(message)s',
@@ -212,6 +263,7 @@ class LoggingMP:
             "file_path": "logs",
             "backup_count": 10,
             "max_file_size": 100 * 1024 * 1024,
+            "file_name_format": None,
         }
 
     # ------------------------------------------------------------------
@@ -224,7 +276,8 @@ class LoggingMP:
             file: bool = False,
             file_path: str = "logs",
             backup_count: int = 10,
-            max_file_size: int = 100 * 1024 * 1024
+            max_file_size: int = 100 * 1024 * 1024,
+            file_name_format: str = None
         ) -> None:
         """Configure the logging-mp system with global settings.
     
@@ -235,13 +288,16 @@ class LoggingMP:
             file_path (str): Path for log files (default: "logs").
             backup_count (int): Number of backup log files to keep (default: 10).
             max_file_size (int): Maximum size in bytes for a single log file.
-                Once exceeded, logging continues in a new timestamped log file.
-                The total number of timestamped log files is limited by
-                backup_count. (default: 100MB)
+                Once exceeded, logging continues in a new log file. The total
+                number of files is limited by backup_count. (default: 100MB)
+            file_name_format (str, optional): File name format supporting
+                strftime directives and {prog_name}. Custom names receive a
+                numeric suffix before the extension. Defaults to None, which
+                preserves timestamped file names.
         
         Raises:
             RuntimeError: If logging is already started.
-            ValueError: If neither console nor file is enabled.
+            ValueError: If configuration values are invalid.
         """
         if self._is_started:
             raise RuntimeError("Logging system has already been started. Please configure before any getLogger() occurs.")
@@ -249,6 +305,18 @@ class LoggingMP:
             raise ValueError("'backup_count' must be greater than or equal to 1.")
         if max_file_size < 1:
             raise ValueError("'max_file_size' must be greater than 0.")
+        if file_name_format is not None and not isinstance(file_name_format, str):
+            raise TypeError("'file_name_format' must be a string or None.")
+        if file_name_format and os.path.basename(file_name_format) != file_name_format:
+            raise ValueError("'file_name_format' must be a file name, not a path.")
+        if file_name_format and not file_name_format.endswith(".log"):
+            raise ValueError("'file_name_format' must end with '.log'.")
+        if "{prog_name}" in (file_name_format or "") and not file_name_format.startswith("{prog_name}_"):
+            raise ValueError("'file_name_format' must start with '{prog_name}_' when using {prog_name}.")
+        try:
+            datetime.datetime.now().strftime(file_name_format or "").format(prog_name="app")
+        except (IndexError, KeyError, ValueError) as exc:
+            raise ValueError(f"Invalid 'file_name_format': {file_name_format}") from exc
         self._global_level = level
         self._config.update({
             "console": console,
@@ -256,6 +324,7 @@ class LoggingMP:
             "file_path": file_path,
             "backup_count": backup_count,
             "max_file_size": max_file_size,
+            "file_name_format": file_name_format,
         })
         if not console and not file:
             raise ValueError("At least one of 'console' or 'file' must be True.")

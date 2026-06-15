@@ -98,8 +98,53 @@ The `basicConfig` method accepts the following arguments:
 | `console` | `bool` | `True` | Enable/Disable Rich console output. |
 | `file` | `bool` | `False` | Enable/Disable writing to a log file. |
 | `file_path` | `str` | `"logs"` | Directory to store log files. |
-| `backup_count` | `int` | `10` | Maximum number of timestamped log files to keep. |
-| `max_file_size` | `int` | `100*1024*1024` | Maximum size in bytes of a single timestamped log file. Once exceeded, logging continues in a new timestamped file like `example_20260324_153000_123456.log`. |
+| `backup_count` | `int` | `10` | Maximum total number of log files retained for this program. The oldest files are deleted first. |
+| `max_file_size` | `int` | `100*1024*1024` | Maximum size of one log file in bytes. A new file is created when the current file reaches this size. |
+| `file_name_format` | `str` | `None` | Optional name format using `strftime` directives and `{prog_name}`. See below for details. |
+
+#### File Naming and Rotation
+
+Without `file_name_format`, every start and size rollover creates a timestamped file:
+
+```text
+example_20260324_153000_123456.log
+```
+
+With `file_name_format="{prog_name}_%Y%m%d.log"`, logs use a date and sequential index:
+
+```text
+example_20260324_0.log
+example_20260324_1.log
+example_20260325_0.log
+```
+
+- Starting the program again on the same day continues writing to the latest indexed file.
+- Reaching `max_file_size` creates the next indexed file.
+- A date change starts index `_0` for the new date.
+- `backup_count` limits the total retained files across all dates; the oldest files are deleted first.
+- If `{prog_name}` is omitted, the program name is automatically prefixed to prevent different programs from sharing or deleting each other's logs.
+- When used, `{prog_name}` must be at the beginning as `{prog_name}_`.
+- The format must end with `.log`.
+
+Approximate maximum disk usage per program is `max_file_size * backup_count`.
+
+Do not run multiple independent instances with the same program name, log directory, and `file_name_format` at the same time. Sequential restarts are supported, but concurrent instances cannot coordinate file rotation.
+
+Common formats:
+
+```python
+# Recommended: program name + date
+file_name_format="{prog_name}_%Y%m%d.log"
+
+# Date only; the program name is added automatically
+file_name_format="%Y%m%d.log"
+
+# Program name + year and month; starts a new index sequence each month
+file_name_format="{prog_name}_%Y%m.log"
+
+# Program name + date and hour; starts a new index sequence each hour
+file_name_format="{prog_name}_%Y%m%d_%H.log"
+```
 
 ### 3.3 More Examples
 

@@ -7,7 +7,13 @@ import threading
 
 import logging_mp
 # Note: basicConfig must be called first to set up the logging system before any loggers are created
-logging_mp.basicConfig(level=logging_mp.WARNING, file=True, backup_count=5, max_file_size=1024 * 1024)
+logging_mp.basicConfig(
+    level=logging_mp.WARNING,
+    file=True,
+    backup_count=5,
+    max_file_size=1024 * 3,
+    # file_name_format="{prog_name}_%Y%m%d.log",
+)
 logger = logging_mp.getLogger(__name__)
 
 from module_a.worker_ta import worker_ta

@@ -96,8 +96,53 @@ if __name__ == "__main__":
 | `console` | `bool` | `True` | 是否启用终端输出 |
 | `file` | `bool` | `False` | 是否启用文件写入 |
 | `file_path` | `str` | `"logs"` | 日志文件存放目录 |
-| `backup_count` | `int` | `10` | 最多保留多少个时间戳日志文件 |
-| `max_file_size` | `int` | `100*1024*1024` | 单个时间戳日志文件的最大字节数。超过后会继续写入新的时间戳文件，例如 `example_20260324_153000_123456.log`。 |
+| `backup_count` | `int` | `10` | 当前程序最多保留的日志文件总数，超过后优先删除最旧文件。 |
+| `max_file_size` | `int` | `100*1024*1024` | 单个日志文件允许的最大字节数，达到后创建新文件继续写入。 |
+| `file_name_format` | `str` | `None` | 可选文件名格式，支持 `strftime` 格式和 `{prog_name}`，详细行为见下文。 |
+
+#### 文件命名与轮转
+
+不设置 `file_name_format` 时，每次启动以及文件大小轮转都会创建时间戳文件：
+
+```text
+example_20260324_153000_123456.log
+```
+
+设置 `file_name_format="{prog_name}_%Y%m%d.log"` 后，日志按日期和递增编号命名：
+
+```text
+example_20260324_0.log
+example_20260324_1.log
+example_20260325_0.log
+```
+
+- 同一天再次启动时，继续写入当天编号最大的文件。
+- 当前文件达到 `max_file_size` 后，创建下一个编号文件。
+- 日期变化后，新日期从 `_0` 开始。
+- `backup_count` 限制所有日期的日志文件总数，超过后优先删除最旧文件。
+- 文件名格式中省略 `{prog_name}` 时，会自动添加程序名前缀，避免不同程序共用或误删日志。
+- 使用 `{prog_name}` 时，必须以 `{prog_name}_` 开头。
+- 文件名格式必须以 `.log` 结尾。
+
+每个程序的日志磁盘占用上限约为 `max_file_size * backup_count`。
+
+不要同时运行多个使用相同程序名、日志目录和 `file_name_format` 的独立程序实例。支持顺序重启，但并发实例之间无法协调文件轮转。
+
+常用格式：
+
+```python
+# 推荐：程序名 + 日期
+file_name_format="{prog_name}_%Y%m%d.log"
+
+# 仅使用日期；程序名会自动添加
+file_name_format="%Y%m%d.log"
+
+# 程序名 + 年月；每月重新从 _0 开始编号
+file_name_format="{prog_name}_%Y%m.log"
+
+# 程序名 + 日期和小时；每小时重新从 _0 开始编号
+file_name_format="{prog_name}_%Y%m%d_%H.log"
+```
 
 ### 3.3 更多示例
 
