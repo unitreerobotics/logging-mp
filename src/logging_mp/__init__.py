@@ -60,6 +60,24 @@ class _logging_mp_QueueHandler(QueueHandler):
             # During shutdown, it is acceptable to lose the last few logs.
             return
 
+def _logging_mp_resolve_start_method():
+    start_method = multiprocessing.get_start_method(allow_none=True)
+    if start_method is not None:
+        return start_method
+
+    # resolve fallback start method
+    default_start_methods = {'Windows': 'spawn', 'Darwin': 'spawn', 'Linux': 'fork'}
+    system = platform.system()
+    if system in default_start_methods:
+        return default_start_methods[system]
+    fallback = multiprocessing.get_all_start_methods()[0]
+    print(
+        f"logging_mp: unrecognized platform.system()={system!r}; "
+        f"using default start method {fallback!r}.",
+        file=sys.stderr,
+    )
+    return fallback
+
 def _logging_mp_get_prog_name():
     try:
         name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
@@ -366,9 +384,7 @@ class LoggingMP:
     def _ensure_started(self):
         with self._lock:
             if self._is_started: return
-            start_method = multiprocessing.get_start_method(allow_none=True)
-            if start_method is None:
-                start_method = 'spawn' if platform.system() == 'Windows' else 'fork'
+            start_method = _logging_mp_resolve_start_method()
             global _logging_mp_raw_log_queue, _logging_mp_log_queue
             if _logging_mp_raw_log_queue is None:
                 if start_method == 'fork':
@@ -431,9 +447,7 @@ getLogger = _internal_manager.getLogger
 # Patch for Spawn Compatibility
 # ----------------------------------------------------------------------
 def _apply_spawn_patch():
-    start_method = multiprocessing.get_start_method(allow_none=True)
-    if start_method is None:
-        start_method = 'spawn' if platform.system() == 'Windows' else 'fork'
+    start_method = _logging_mp_resolve_start_method()
     if getattr(multiprocessing.Process, '_logging_mp_patched', False):
         return
     if start_method in ('spawn', 'forkserver'):
