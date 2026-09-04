@@ -5,12 +5,12 @@ import glob
 import logging
 import multiprocessing
 import os
-import platform
 import queue as queue_module
 import re
 import signal
 import sys
 import threading
+from typing import Optional
 from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
 from rich.logging import RichHandler
 
@@ -277,7 +277,7 @@ class LoggingMP:
             file_path: str = "logs",
             backup_count: int = 10,
             max_file_size: int = 100 * 1024 * 1024,
-            file_name_format: str = None
+            file_name_format: Optional[str] = None
         ) -> None:
         """Configure the logging-mp system with global settings.
     
@@ -334,7 +334,7 @@ class LoggingMP:
 
     def getLogger(
             self, 
-            name: str = None
+            name: Optional[str] = None
         ) -> logging.Logger:
         """Get a logger instance configured for multiprocessing.
     
@@ -366,9 +366,7 @@ class LoggingMP:
     def _ensure_started(self):
         with self._lock:
             if self._is_started: return
-            start_method = multiprocessing.get_start_method(allow_none=True)
-            if start_method is None:
-                start_method = 'spawn' if platform.system() == 'Windows' else 'fork'
+            start_method = multiprocessing.get_start_method(allow_none=True) or multiprocessing.get_all_start_methods()[0]
             global _logging_mp_raw_log_queue, _logging_mp_log_queue
             if _logging_mp_raw_log_queue is None:
                 if start_method == 'fork':
@@ -431,9 +429,7 @@ getLogger = _internal_manager.getLogger
 # Patch for Spawn Compatibility
 # ----------------------------------------------------------------------
 def _apply_spawn_patch():
-    start_method = multiprocessing.get_start_method(allow_none=True)
-    if start_method is None:
-        start_method = 'spawn' if platform.system() == 'Windows' else 'fork'
+    start_method = multiprocessing.get_start_method(allow_none=True) or multiprocessing.get_all_start_methods()[0]
     if getattr(multiprocessing.Process, '_logging_mp_patched', False):
         return
     if start_method in ('spawn', 'forkserver'):
