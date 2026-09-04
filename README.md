@@ -54,7 +54,8 @@ import time
 
 import logging_mp
 # Call basicConfig before creating any processes or importing submodules that create loggers.
-# In spawn mode, this automatically starts the listener process and applies the required monkey patch.
+# In spawn mode, this automatically wires child processes to the log queue (monkey patch)
+# and starts the background listener.
 logging_mp.basicConfig(
     level=logging_mp.INFO, 
     console=True, 
@@ -173,12 +174,12 @@ See the `example` directory for a complete runnable example.
 
 The standard Python `logging` library is **thread-safe**, but it is not designed for **multiprocessing** by default. `logging_mp` uses a queue-based architecture so that multi-threading support is preserved while multi-process logging conflicts are handled centrally:
 
-- **Centralized Listening**: When the main process starts, the library creates a dedicated background process named `_logging_mp_queue_listener`. This single **consumer** receives records from the queue and performs Rich console output or file writing in one place.
+- **Centralized Listening**: When the main process starts, the library starts a single background **thread** (named `LogListener`) in the main process. This thread is the sole **consumer**: it receives records from the shared queue and performs the Rich console and/or file output in one place. Because the consumer is a thread rather than a spawned child process, it never re-imports `__main__`, so it is immune to import-time crashes silently killing the logger.
 - **Transparent Injection**: To keep the user-facing API simple, the library patches `multiprocessing.Process` on import. In `spawn` mode, the log queue is injected during child process bootstrap (`_bootstrap`), so child processes can send logs back immediately after startup.
 - **Threads And Processes**:
   - **Threads**: It keeps the thread-safety behavior of the standard `logging` module. Thread logs do not need cross-process communication, so the overhead stays low.
-  - **Processes**: In each child process, `logger.info()` acts as a **producer**. Records are sent to a cross-process queue first, while console output and file I/O are handled by the listener process. This greatly reduces logging-related blocking in normal use, though it is not a strict zero-blocking system.
-- **Linear Ordering**: Logs from all processes and threads ultimately converge into a single in-memory queue. The listener processes them in receive order, which avoids interleaved output and multi-process file writing conflicts.
+  - **Processes**: In each process, `logger.info()` acts as a **producer** with backpressure: the record goes to the shared queue first, and a producer that outruns the consumer is throttled rather than dropping records. In the main process the listener thread drains the queue and writes to the console and/or file. Console rendering is delegated to its own asynchronous thread, so a slow or stalled console (e.g. `prog | head`) can never stall the listener and deadlock every producer; under an unusually slow console it degrades to counted, reported drops instead of hanging. The file log is always authoritative.
+- **Linear Ordering**: Logs from all processes and threads ultimately converge into a single shared queue. The listener processes them in receive order, which avoids interleaved output and multi-process file writing conflicts.
 
 ## 6. ⚠️ Notes
 
