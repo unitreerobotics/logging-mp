@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 856" width="1600" height="856">
+  <title>logging-mp</title>
+
+  <defs>
+    <!-- Official Python logo gradients (from python.org brand assets) -->
+    <linearGradient id="pyBlue" gradientUnits="userSpaceOnUse"
+                    x1="10.518" y1="9.749" x2="65.196" y2="64.610">
+      <stop offset="0" stop-color="#387EB8"/>
+      <stop offset="1" stop-color="#366994"/>
+    </linearGradient>
+    <linearGradient id="pyYellow" gradientUnits="userSpaceOnUse"
+                    x1="43.747" y1="44.800" x2="102.369" y2="100.963">
+      <stop offset="0" stop-color="#FFE052"/>
+      <stop offset="1" stop-color="#FFC331"/>
+    </linearGradient>
+
+    <linearGradient id="flow" gradientUnits="userSpaceOnUse" x1="248" y1="0" x2="526" y2="0">
+      <stop offset="0"    stop-color="#387EB8" stop-opacity="0.30"/>
+      <stop offset="0.55" stop-color="#387EB8" stop-opacity="0.85"/>
+      <stop offset="1"    stop-color="#2C5B85"/>
+    </linearGradient>
+
+    <!-- Authentic Python mark, 110x110 user units -->
+    <g id="pymark">
+      <path fill="url(#pyBlue)" d="M55.023-0.077c-25.971,0-26.25,10.081-26.25,12.156c0,3.148,0,12.594,0,12.594h26.75v3.781
+        c0,0-27.852,0-37.375,0c-7.949,0-17.938,4.833-17.938,26.25c0,19.673,7.792,27.281,15.656,27.281c2.335,0,9.344,0,9.344,0
+        s0-9.765,0-13.125c0-5.491,2.721-15.656,15.406-15.656c15.91,0,19.971,0,26.531,0c3.902,0,14.906-1.696,14.906-14.406
+        c0-13.452,0-17.89,0-24.219C82.054,11.426,81.515-0.077,55.023-0.077z M40.273,8.392c2.662,0,4.813,2.15,4.813,4.813
+        c0,2.661-2.151,4.813-4.813,4.813s-4.813-2.151-4.813-4.813C35.46,10.542,37.611,8.392,40.273,8.392z"/>
+      <path fill="url(#pyYellow)" d="M55.397,109.923c25.959,0,26.282-10.271,26.282-12.156c0-3.148,0-12.594,0-12.594H54.897v-3.781
+        c0,0,28.032,0,37.375,0c8.009,0,17.938-4.954,17.938-26.25c0-23.322-10.538-27.281-15.656-27.281c-2.336,0-9.344,0-9.344,0
+        s0,10.216,0,13.125c0,5.491-2.631,15.656-15.406,15.656c-15.91,0-19.476,0-26.532,0c-3.892,0-14.906,1.896-14.906,14.406
+        c0,14.475,0,18.265,0,24.219C28.366,100.497,31.562,109.923,55.397,109.923z M70.148,101.454c-2.662,0-4.813-2.151-4.813-4.813
+        s2.15-4.813,4.813-4.813c2.661,0,4.813,2.151,4.813,4.813S72.809,101.454,70.148,101.454z"/>
+    </g>
+  </defs>
+
+  <!-- ============ three producer processes ============ -->
+  <g transform="translate(96,104) scale(1.16)"><use href="#pymark"/></g>
+  <g transform="translate(96,268) scale(1.16)"><use href="#pymark"/></g>
+  <g transform="translate(96,432) scale(1.16)"><use href="#pymark"/></g>
+
+  <!-- ============ converging flow into one ordered stream ============ -->
+  <g fill="none" stroke="url(#flow)" stroke-linecap="round">
+    <path d="M 248,168 C 370,168 410,332 520,332" stroke-width="13"/>
+    <path d="M 248,332 L 520,332"                 stroke-width="13"/>
+    <path d="M 248,496 C 370,496 410,332 520,332" stroke-width="13"/>
+  </g>
+  <!-- the merge point: one queue, one listener -->
+  <circle cx="526" cy="332" r="17" fill="#2C5B85"/>
+  <path d="M 526,332 L 626,332" stroke="#2C5B85" stroke-width="22" fill="none"/>
+  <path d="M 620,304 L 620,360 L 674,332 Z" fill="#2C5B85"/>
+
+  <!-- ============ the single listener drains it in order ============ -->
+  <g>
+    <rect x="740" y="150" width="780" height="364" rx="20" fill="#1B2A3A"/>
+    <path d="M740,170 a20,20 0 0 1 20,-20 h740 a20,20 0 0 1 20,20 v34 h-780 z" fill="#26394D"/>
+    <circle cx="774" cy="177" r="8.5" fill="#FF5F57"/>
+    <circle cx="802" cy="177" r="8.5" fill="#FEBC2E"/>
+    <circle cx="830" cy="177" r="8.5" fill="#28C840"/>
+    <text x="1130" y="184" text-anchor="middle"
+          font-family="'SF Mono','Menlo','DejaVu Sans Mono',monospace"
+          font-size="18" fill="#8CA3BA">unitreerobotics/logging-mp &#8212; silencht</text>
+
+    <g font-family="'SF Mono','Menlo','DejaVu Sans Mono',monospace" font-size="20">
+      <g>
+        <text x="774"  y="258" fill="#7E93A9">12:04:31.120</text>
+        <text x="936"  y="258" fill="#8AA4BE">DEBUG</text>
+        <text x="1014" y="258" fill="#6F8AA8">[main]</text>
+        <text x="1152" y="258" fill="#D8E3EE">listener ready</text>
+        <text x="1486" y="258" fill="#8FA6BC" text-anchor="end">main.py:41</text>
+      </g>
+      <g>
+        <text x="774"  y="312" fill="#7E93A9">12:04:31.144</text>
+        <text x="936"  y="312" fill="#7FD88F">INFO</text>
+        <text x="1014" y="312" fill="#6F8AA8">[worker]</text>
+        <text x="1152" y="312" fill="#D8E3EE">task 42 done</text>
+        <text x="1486" y="312" fill="#8FA6BC" text-anchor="end">worker.py:88</text>
+      </g>
+      <g>
+        <text x="774"  y="366" fill="#7E93A9">12:04:31.150</text>
+        <text x="936"  y="366" fill="#FFD43B">WARN</text>
+        <text x="1014" y="366" fill="#6F8AA8">[worker-2]</text>
+        <text x="1152" y="366" fill="#D8E3EE">retry 2/5</text>
+        <text x="1486" y="366" fill="#8FA6BC" text-anchor="end">worker2.py:57</text>
+      </g>
+      <g>
+        <text x="774"  y="420" fill="#7E93A9">12:04:31.163</text>
+        <text x="936"  y="420" fill="#FF6B6B">ERROR</text>
+        <text x="1014" y="420" fill="#6F8AA8">[worker-2]</text>
+        <text x="1152" y="420" fill="#D8E3EE">timeout 30s</text>
+        <text x="1486" y="420" fill="#8FA6BC" text-anchor="end">worker2.py:63</text>
+      </g>
+      <rect x="774" y="452" width="12" height="25" fill="#FFD43B"/>
+    </g>
+  </g>
+
+  <!-- ============ wordmark ============ -->
+  <g text-anchor="middle" font-family="'SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif">
+    <text x="800" y="686" font-size="152" font-weight="700" letter-spacing="-4" fill="#1B2A3A">logging<tspan fill="#387EB8">-mp</tspan></text>
+    <text x="800" y="762" font-size="40" font-weight="500" letter-spacing="7" fill="#64798F">MULTI-PROCESS SAFE</text>
+  </g>
+</svg>

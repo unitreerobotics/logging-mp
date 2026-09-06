@@ -1,7 +1,7 @@
 <div align="center">
   
 <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20px;">
-  <img src="https://raw.githubusercontent.com/unitreerobotics/logging-mp/main/logging_mp.png" style="width: 45%; min-width: 250px; max-width: 300px;">
+  <img src="https://raw.githubusercontent.com/unitreerobotics/logging-mp/main/logging_mp.svg" style="width: 45%; min-width: 250px; max-width: 300px;">
   <span style="color: #ddd; font-size: 30px;">        </span>
   <a href="https://www.unitree.com/">
     <img src="https://www.unitree.com/images/0079f8938336436e955ea3a98c4e1e59.svg" style="width: 45%; min-width: 250px; max-width: 300px;">
