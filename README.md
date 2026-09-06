@@ -1,7 +1,7 @@
 <div align="center">
   
 <div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 20px;">
-  <img src="./logging_mp.png" style="width: 45%; min-width: 250px; max-width: 300px;">
+  <img src="https://raw.githubusercontent.com/unitreerobotics/logging-mp/main/logging_mp.png" style="width: 45%; min-width: 250px; max-width: 300px;">
   <span style="color: #ddd; font-size: 30px;">        </span>
   <a href="https://www.unitree.com/">
     <img src="https://www.unitree.com/images/0079f8938336436e955ea3a98c4e1e59.svg" style="width: 45%; min-width: 250px; max-width: 300px;">
@@ -102,6 +102,7 @@ The `basicConfig` method accepts the following arguments:
 | `backup_count` | `int` | `10` | Maximum total number of log files retained for this program. The oldest files are deleted first. |
 | `max_file_size` | `int` | `100*1024*1024` | Maximum size of one log file in bytes. A new file is created when the current file reaches this size. |
 | `file_name_format` | `str` | `None` | Optional name format using `strftime` directives and `{prog_name}`. See below for details. |
+| `queue_size` | `int` | `65536` | Records that may be in flight before producers are throttled, bounding memory. Clamped to the platform semaphore cap (32767 on macOS); only the first call takes effect. |
 
 #### File Naming and Rotation
 
@@ -178,17 +179,22 @@ The standard Python `logging` library is **thread-safe**, but it is not designed
 - **Transparent Injection**: To keep the user-facing API simple, the library patches `multiprocessing.Process` on import. In `spawn` mode, the log queue is injected during child process bootstrap (`_bootstrap`), so child processes can send logs back immediately after startup.
 - **Threads And Processes**:
   - **Threads**: It keeps the thread-safety behavior of the standard `logging` module. Thread logs do not need cross-process communication, so the overhead stays low.
-  - **Processes**: In each process, `logger.info()` acts as a **producer** with backpressure: the record goes to the shared queue first, and a producer that outruns the consumer is throttled rather than dropping records. In the main process the listener thread drains the queue and writes to the console and/or file. Console rendering is delegated to its own asynchronous thread, so a slow or stalled console (e.g. `prog | head`) can never stall the listener and deadlock every producer; under an unusually slow console it degrades to counted, reported drops instead of hanging. The file log is always authoritative.
+  - **Processes**: In each process, `logger.info()` acts as a **producer** with backpressure: the record goes to the shared queue first, and a producer that outruns the consumer is throttled rather than dropping records. The queue holds at most `queue_size` records in flight, so a producer that outruns the listener is bounded in memory instead of buffering without limit. Under extreme oversubscription a record can still exceed the 3s enqueue deadline; it is then written to stderr, never dropped silently. In the main process the listener thread drains the queue and writes to the console and/or file. Console rendering is delegated to its own asynchronous thread, so a slow or stalled console (e.g. `prog | head`) can never stall the listener and deadlock every producer; under an unusually slow console it degrades to counted, reported drops instead of hanging. The file log is authoritative in normal operation; the cases where it is not are listed below, and each of them reports itself on stderr rather than losing records quietly.
 - **Linear Ordering**: Logs from all processes and threads ultimately converge into a single shared queue. The listener processes them in receive order, which avoids interleaved output and multi-process file writing conflicts.
+- **Surviving A Killed Producer**: CPython's documented limitation is that a `multiprocessing.Queue` is corrupted if a process is `SIGKILL`ed (e.g. by the OOM killer) while writing to it — the pipe's write lock is a POSIX semaphore with no owner-death recovery, and a partial write desynchronises the reader. The queue cannot be repaired, so the library detects it instead: the listener publishes a heartbeat, and a producer whose previous record has gone unconsumed for a full 5s window reports the stall once and writes to stderr instead. Records already accepted into the queue before that point are lost, so the residue is bounded by the detection window rather than being total, permanent silence.
 
 ## 6. ⚠️ Notes
 
 - **Import Order**: In multiprocessing environments using `spawn` mode, ensure that you import `logging_mp` and call `basicConfig` **before** creating any `Process` objects.
 
+- **Start Method**: You may call `multiprocessing.set_start_method()` before or after importing `logging_mp`; the start method is read when each `Process` is constructed, not at import, so either order works. It must, however, come **before** `basicConfig()` — the log queue is created there, and CPython refuses to share a queue built in one context with a process started in another (`A SemLock created in a fork context is being shared with a process in a spawn context`).
+
 - **Windows/macOS**: Because these platforms use `spawn`, **always place process-starting code inside an `if __name__ == "__main__":` block**. Otherwise, recursive startup errors may occur.
 
 - **Process Subclassing**: If you create processes by subclassing `multiprocessing.Process` and override `__init__`, **be sure to call `super().__init__()`**.
-- **Shutdown Semantics**: The library shuts down its listener automatically at process exit. If the program is terminated abruptly, the last few log records may still be lost.
+- **Shutdown Semantics**: The library shuts down its listener automatically at process exit, registered at import time so that `atexit` handlers you register yourself still get their logs written (`atexit` runs LIFO). Records logged after an explicit shutdown go to stderr rather than into a queue nobody is reading. If the program is terminated abruptly by a signal, `atexit` does not run at all and the last few records are lost.
+
+- **Killed Producers**: If a process is `SIGKILL`ed (`kill -9`, the OOM killer) while it is writing to the log queue, CPython leaves that queue unusable for every process — this is a documented `multiprocessing` limitation, not something a logging library can repair. `logging_mp` detects the stall within 5–10s and falls back to stderr, printing `logging_mp: log queue stopped delivering`. If you see that line, logs after it are on stderr, and the file is complete only up to the kill. (The check is re-evaluated every window, so a queue that was merely stalled — not corrupted — resumes normally and prints `log queue is delivering again`.) The other processes also still **exit**: each one gives up its own undeliverable buffer at exit rather than blocking forever in the queue's feeder thread, which would otherwise hang the parent's `join()` too. Prefer `SIGTERM` for processes that log.
 
 ## 7. 📄 License
 
